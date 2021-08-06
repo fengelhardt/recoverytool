@@ -12,21 +12,36 @@ var g_startfrom int64
 var g_enduntil int64
 var g_numlines uint64
 var g_linelen uint64
-var g_pattern string
+var g_patterns strlist
 var g_filename string
 var g_bufsize uint
 var g_doprint bool
+var g_linesbefore uint64
+var g_linesafter uint64
 
 var g_file *os.File
+
+type strlist []string
+
+func (l *strlist) String() string {
+    return fmt.Sprintf("\"%s\"", *l)
+}
+ 
+func (l *strlist) Set(value string) error {
+	*l = append(*l, value)
+    return nil
+}
 
 func specifyFlags() {
 	flag.Int64Var(&g_startfrom, "s", 0, "begin at this byte offset")
 	flag.Int64Var(&g_enduntil, "e", -1, "read up to this byte offset")
 	flag.Uint64Var(&g_numlines, "n", 0, "number of \"lines\" to process")
-	flag.Uint64Var(&g_linelen, "l", 128, "length of a \"line\"")
+	flag.Uint64Var(&g_linelen, "l", 128, "length of a \"line\" for report")
+	flag.Uint64Var(&g_linesbefore, "lb", 3, "\"lines\" of context to report before a match")
+	flag.Uint64Var(&g_linesafter, "la", 3, "\"lines\" of context to report after a match")
 	flag.UintVar(&g_bufsize, "b", 128*1024*1024, "buffer size used")
 	flag.BoolVar(&g_doprint, "p", false, "print out data")
-	flag.StringVar(&g_pattern, "m", "", "search for a pattern")
+	flag.Var(&g_patterns, "m", "search for a pattern")
 }
 
 func checkFlags() error {
@@ -54,7 +69,7 @@ func checkFlags() error {
 	}
 	actions := 0
 	if g_doprint { actions++ }
-	if g_pattern != "" { actions++ }
+	if len(g_patterns) != 0 { actions++ }
 	if actions == 0 {
 		return errors.New("No action specified. Must specify one of -p -m")
 	}
@@ -105,14 +120,14 @@ func main() {
 		}
 	}
 	
-	if g_pattern != "" {
+	if len(g_patterns) != 0 {
 		n := uint64(g_enduntil - g_startfrom)
 		if g_numlines != 0 {
 			n = min(g_linelen*g_numlines, n)
 		}
 		fmt.Printf("Iterating from %x to %x: %s\n", g_startfrom, uint64(g_startfrom)+n, siValue(float64(n), "B"))
-		ac := bytecountaction{}
-		ac.Init()
+		ac := searchaction{}
+		ac.Init(g_patterns)
 		iterateOverFile(uint64(g_startfrom), n, &ac)
 		if err != nil {
 			fmt.Println(err)

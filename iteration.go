@@ -6,7 +6,7 @@ import(
 )
 
 type action interface {
-	Run(buf[] byte, tcnt uint64, n uint64, lastbit bool) (uint64, error)
+	Run(buf[] byte, abspos, tcnt, n uint64, lastbit bool) (uint64, error)
 }
 
 func iterateOverFile(from uint64, n uint64, ac action) error {
@@ -29,7 +29,7 @@ func iterateOverFile(from uint64, n uint64, ac action) error {
 		lastbit := (maxcnt != uint64(l))
 // 		fmt.Printf("n=%d l=%d offs=%d  \n", n, l, offs)
 		var bytesused uint64
-		bytesused, err = ac.Run(buf[:maxcnt], totalbytecnt, n, lastbit)
+		bytesused, err = ac.Run(buf[:maxcnt], from+totalbytecnt, totalbytecnt, n, lastbit)
 		totalbytecnt += bytesused
 		if err != nil {
 			return err
@@ -46,7 +46,7 @@ func iterateOverFile(from uint64, n uint64, ac action) error {
 	// Handle the last incomplete chunk.
 	// The action should use every byte now.
 	if totalbytecnt < n {
-		ac.Run(buf[totalbytecnt:n-totalbytecnt], totalbytecnt, n, true)
+		ac.Run(buf[totalbytecnt:n-totalbytecnt], from+totalbytecnt, totalbytecnt, n, true)
 	}
 	return nil
 }

@@ -94,11 +94,10 @@ func main() {
 	if g_doprint {
 		n := uint64(g_enduntil - g_startfrom)
 		if g_numlines != 0 {
-			n = min(uint64(g_startfrom) + g_linelen*g_numlines, n)
+			n = min(g_linelen*g_numlines, n)
 		}
-		fmt.Printf("Printing from %x to %d: %s\n", g_startfrom, uint64(g_startfrom)+n, siValue(float64(n), "B"))
+		fmt.Printf("Printing from %x to %x: %s\n", g_startfrom, uint64(g_startfrom)+n, siValue(float64(n), "B"))
 		ac := hexdumpaction{}
-		ac.Init(uint64(g_startfrom))
 		iterateOverFile(uint64(g_startfrom), n, &ac)
 		if err != nil {
 			fmt.Println(err)
@@ -109,9 +108,9 @@ func main() {
 	if g_pattern != "" {
 		n := uint64(g_enduntil - g_startfrom)
 		if g_numlines != 0 {
-			n = min(uint64(g_startfrom) + g_linelen*g_numlines, n)
+			n = min(g_linelen*g_numlines, n)
 		}
-		fmt.Printf("Iterating from %x to %d: %s\n", g_startfrom, uint64(g_startfrom)+n, siValue(float64(n), "B"))
+		fmt.Printf("Iterating from %x to %x: %s\n", g_startfrom, uint64(g_startfrom)+n, siValue(float64(n), "B"))
 		ac := bytecountaction{}
 		ac.Init()
 		iterateOverFile(uint64(g_startfrom), n, &ac)

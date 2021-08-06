@@ -17,10 +17,11 @@ func (a *bytecountaction) Init() {
 	return
 }
 
-func (a *bytecountaction) Run(buf[] byte, tcnt uint64, n uint64, lastbit bool) (uint64, error) {
+func (a *bytecountaction) Run(buf[] byte, abspos, tcnt, n uint64, lastbit bool) (uint64, error) {
 	for i := 0; i < len(buf) ; i++ {
 		a.cnt++
 		tcnt++
+		abspos++
 	}
 	t2 := time.Now()
 	itp := float64(len(buf)) / float64((t2.Sub(a.t1)).Milliseconds()) * 1000.0

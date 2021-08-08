@@ -4,40 +4,29 @@ import (
 	"fmt"
 	"time"
 	"os"
+	"bytes"
 )
 
 type searchaction struct {
 	tp float64
 	t1 time.Time
-	needles []string
-	npos []int
-	n int
+	needles [][]byte
+	maxlen int
 }
 
-func (a *searchaction) Init(needles []string) {
+func (a *searchaction) Init(needles [][]byte) {
 	a.t1 = time.Now()
 	a.tp = 0.0
-	a.n = len(needles)
 	a.needles = needles
-	a.npos = make([]int, a.n)
-	return
-}
-
-func (a *searchaction) match(c byte, needle int, addr uint64) {
-	if a.needles[needle][a.npos[needle]] == c {
-		a.npos[needle]++
-		if a.npos[needle] == len(a.needles[needle]) {
-			a.report(needle, addr)
-			a.npos[needle] = 0
-		}
-	} else {
-		a.npos[needle] = 0
+	a.maxlen = 0
+	for _ , n := range needles {
+		if len(n) > a.maxlen {a.maxlen = len(n)}
 	}
 	return
 }
 
-func (a *searchaction) report(needle int, addr uint64) {
-	fmt.Printf("Match for %s at adress %x\n", a.needles[needle], addr)
+func (a *searchaction) report(needle []byte, addr uint64) {
+	fmt.Printf("Match for %s at adress %x\n", needle, addr)
 	rstartaddr := addr - addr%g_linelen
 	rstartline := rstartaddr / g_linelen
 // 	fmt.Println(rstartaddr, g_linelen, rstartline)
@@ -53,13 +42,15 @@ func (a *searchaction) report(needle int, addr uint64) {
 }
 
 func (a *searchaction) Run(buf[] byte, abspos, tcnt, n uint64, lastbit bool) (uint64, error) {
-	for i := 0; i < len(buf) ; i++ {
-		c := buf[i]
-		for j, _ := range a.needles {
-			a.match(c, j, abspos)
+	for _, needle := range a.needles {
+		bufcnt := 0
+		idx := bytes.Index(buf, needle)
+		for idx != -1 {
+			bufcnt += idx
+			a.report(needle, abspos+uint64(bufcnt))
+			bufcnt += len(needle)
+			idx = bytes.Index(buf[bufcnt:], needle)
 		}
-		tcnt++
-		abspos++
 	}
 	t2 := time.Now()
 	itp := float64(len(buf)) / float64((t2.Sub(a.t1)).Milliseconds()) * 1000.0
@@ -70,6 +61,7 @@ func (a *searchaction) Run(buf[] byte, abspos, tcnt, n uint64, lastbit bool) (ui
 	fmt.Fprintf(os.Stderr, "\r%5.1f%%, %s ETA %s          ", percentcomplete, siValue(a.tp, "B/s"), eta)
 	if lastbit {
 		fmt.Fprintf(os.Stderr, "\n")
+		return uint64(len(buf)), nil
 	}
-	return uint64(len(buf)), nil
+	return uint64(len(buf)-a.maxlen), nil
 }

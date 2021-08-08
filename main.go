@@ -86,6 +86,14 @@ func min(a, b uint64) uint64 {
     return b
 }
 
+func toBytesSlice(s []string) [][]byte {
+	var ret [][]byte
+	for _ , str := range s {
+		ret = append(ret, []byte(str))
+	}
+	return ret
+}
+
 func main() {
 	specifyFlags()
 	flag.Parse()
@@ -127,7 +135,7 @@ func main() {
 		}
 		fmt.Printf("Iterating from %x to %x: %s\n", g_startfrom, uint64(g_startfrom)+n, siValue(float64(n), "B"))
 		ac := searchaction{}
-		ac.Init(g_patterns)
+		ac.Init(toBytesSlice(g_patterns))
 		iterateOverFile(uint64(g_startfrom), n, &ac)
 		if err != nil {
 			fmt.Println(err)

@@ -42,6 +42,9 @@ func (a *searchaction) report(needle []byte, addr uint64) {
 }
 
 func (a *searchaction) Run(buf[] byte, abspos, tcnt, n uint64, lastbit bool) (uint64, error) {
+	if len(buf) < 0 {
+		return uint64(0), nil
+	}
 	for _, needle := range a.needles {
 		bufcnt := 0
 		idx := bytes.Index(buf, needle)
@@ -58,7 +61,7 @@ func (a *searchaction) Run(buf[] byte, abspos, tcnt, n uint64, lastbit bool) (ui
 	eta := calcETA(float64(n-tcnt), a.tp)
 	a.t1 = t2
 	percentcomplete := float64(tcnt)/float64(n)*100.0
-	fmt.Fprintf(os.Stderr, "\r%5.1f%%, %s ETA %s          ", percentcomplete, siValue(a.tp, "B/s"), eta)
+	fmt.Fprintf(os.Stderr, "%5.1f%%, %s ETA %s          \r", percentcomplete, siValue(a.tp, "B/s"), eta)
 	if lastbit {
 		fmt.Fprintf(os.Stderr, "\n")
 		return uint64(len(buf)), nil

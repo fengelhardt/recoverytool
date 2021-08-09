@@ -29,7 +29,7 @@ func (a *bytecountaction) Run(buf[] byte, abspos, tcnt, n uint64, lastbit bool) 
 	eta := calcETA(float64(n-tcnt), a.tp)
 	a.t1 = t2
 	percentcomplete := float64(tcnt)/float64(n)*100.0
-	fmt.Printf("\r%5.1f%%, %s ETA %s          ", percentcomplete, siValue(a.tp, "B/s"), eta)
+	fmt.Printf("%5.1f%%, %s ETA %s          \r", percentcomplete, siValue(a.tp, "B/s"), eta)
 	if lastbit {
 		fmt.Println()
 		fmt.Println("Counted ", a.cnt)

@@ -18,6 +18,7 @@ var g_bufsize uint
 var g_doprint bool
 var g_linesbefore uint64
 var g_linesafter uint64
+var g_domd5 bool
 
 var g_file *os.File
 
@@ -41,6 +42,7 @@ func specifyFlags() {
 	flag.Uint64Var(&g_linesafter, "la", 3, "\"lines\" of context to report after a match")
 	flag.UintVar(&g_bufsize, "b", 128*1024*1024, "buffer size used")
 	flag.BoolVar(&g_doprint, "p", false, "print out data")
+	flag.BoolVar(&g_domd5, "md5", false, "calculate the md5 checksum")
 	flag.Var(&g_patterns, "m", "search for a pattern")
 }
 
@@ -69,12 +71,13 @@ func checkFlags() error {
 	}
 	actions := 0
 	if g_doprint { actions++ }
+	if g_domd5 { actions++ }
 	if len(g_patterns) != 0 { actions++ }
 	if actions == 0 {
-		return errors.New("No action specified. Must specify one of -p -m")
+		return errors.New("No action specified. Must specify one of -p -m -md5")
 	}
 	if actions >= 2 {
-		return errors.New("Can only have one flag out of -p -m ")
+		return errors.New("Can only have one flag out of -p -m -md5")
 	}
 	return nil
 }
@@ -128,12 +131,27 @@ func main() {
 		}
 	}
 	
+	if g_domd5 {
+		n := uint64(g_enduntil - g_startfrom)
+		if g_numlines != 0 {
+			n = min(g_linelen*g_numlines, n)
+		}
+		fmt.Printf("Calculating checksum from %x to %x: %s\n", g_startfrom, uint64(g_startfrom)+n, siValue(float64(n), "B"))
+		ac := md5action{}
+		ac.Init()
+		iterateOverFile(uint64(g_startfrom), n, &ac)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+	}
+	
 	if len(g_patterns) != 0 {
 		n := uint64(g_enduntil - g_startfrom)
 		if g_numlines != 0 {
 			n = min(g_linelen*g_numlines, n)
 		}
-		fmt.Printf("Iterating from %x to %x: %s\n", g_startfrom, uint64(g_startfrom)+n, siValue(float64(n), "B"))
+		fmt.Printf("Searching from %x to %x: %s\n", g_startfrom, uint64(g_startfrom)+n, siValue(float64(n), "B"))
 		ac := searchaction{}
 		ac.Init(toBytesSlice(g_patterns))
 		iterateOverFile(uint64(g_startfrom), n, &ac)

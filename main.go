@@ -35,7 +35,7 @@ func (l *strlist) Set(value string) error {
 
 func specifyFlags() {
 	flag.Int64Var(&g_startfrom, "s", 0, "begin at this byte offset")
-	flag.Int64Var(&g_enduntil, "e", -1, "read up to this byte offset")
+	flag.Int64Var(&g_enduntil, "e", 0, "read up to this byte offset (not including the particular byte at offset)")
 	flag.Uint64Var(&g_numlines, "n", 0, "number of \"lines\" to process")
 	flag.Uint64Var(&g_linelen, "l", 128, "length of a \"line\" for report")
 	flag.Uint64Var(&g_linesbefore, "lb", 3, "\"lines\" of context to report before a match")
@@ -54,13 +54,13 @@ func checkFlags() error {
 	if g_startfrom < 0 {
 		g_startfrom = filesize + g_startfrom
 	}
-	if g_enduntil < 0 {
+	if g_enduntil <= 0 {
 		g_enduntil = filesize + g_enduntil
 	}
 	if g_startfrom >= filesize {
 		return errors.New("Start offset is too big")
 	}
-	if g_enduntil >= filesize {
+	if g_enduntil > filesize {
 		return errors.New("End offset is too big")
 	}
 	if g_enduntil < g_startfrom {
@@ -101,7 +101,7 @@ func main() {
 	specifyFlags()
 	flag.Parse()
 	if len(flag.Args()) == 0 {
-		fmt.Println("missing file name")
+		fmt.Println("Missing file name")
 		return
 	}
 	g_filename = flag.Args()[0]

@@ -22,7 +22,6 @@ func (a *md5action) Init() {
 	return
 }
 
-
 var s = [64]uint32{
 	7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,
 	5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,
@@ -30,76 +29,142 @@ var s = [64]uint32{
 	6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21,
 }
 
-var K = [64]uint32{
-	0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
-	0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
-	0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be,
-	0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
-	0xf61e2562, 0xc040b340, 0x265e5a51, 0xe9b6c7aa,
-	0xd62f105d, 0x02441453, 0xd8a1e681, 0xe7d3fbc8,
-	0x21e1cde6, 0xc33707d6, 0xf4d50d87, 0x455a14ed,
-	0xa9e3e905, 0xfcefa3f8, 0x676f02d9, 0x8d2a4c8a,
-	0xfffa3942, 0x8771f681, 0x6d9d6122, 0xfde5380c,
-	0xa4beea44, 0x4bdecfa9, 0xf6bb4b60, 0xbebfbc70,
-	0x289b7ec6, 0xeaa127fa, 0xd4ef3085, 0x04881d05,
-	0xd9d4d039, 0xe6db99e5, 0x1fa27cf8, 0xc4ac5665,
-	0xf4292244, 0x432aff97, 0xab9423a7, 0xfc93a039,
-	0x655b59c3, 0x8f0ccc92, 0xffeff47d, 0x85845dd1,
-	0x6fa87e4f, 0xfe2ce6e0, 0xa3014314, 0x4e0811a1,
-	0xf7537e82, 0xbd3af235, 0x2ad7d2bb, 0xeb86d391,
+func F(x, y, z uint32) uint32 {
+	return (x & y) | ((^x) & z)
 }
 
-func (a *md5action) iteratemd5(buf []byte) uint64 {
+func G(x, y, z uint32) uint32 {
+	return (x & z) | (y & (^z))
+}
+
+func H(x, y, z uint32) uint32 {
+	return x ^ y ^ z
+}
+
+func I(x, y, z uint32) uint32 {
+	return y ^ (x | (^z))
+}
+
+func FF(a, b, c, d, x, s, ac uint32) uint32 {
+	a += F(b, c, d) + x + ac
+	a = leftrotate(a, s)
+	a += b
+	return a
+}
+func GG(a, b, c, d, x, s, ac uint32) uint32 {
+	a += G(b, c, d) + x + ac
+	a = leftrotate((a), (s))
+	a += b
+	return a
+}
+
+func HH(a, b, c, d, x, s, ac uint32) uint32 {
+	a += H (b, c, d) + x + ac
+	a = leftrotate (a, s)
+	a += b
+	return a
+}
+
+func II(a, b, c, d, x, s, ac uint32) uint32 {
+	a += I(b, c, d) + x + ac
+	a = leftrotate (a, s)
+	a += b
+	return a
+}
+
+func (ac *md5action) iteratemd5(buf []byte) uint64 {
 	bytesused := uint64(0)
 	for ch := 0; ch < len(buf)/64 ; ch++ {
-		// break chunk into sixteen 32-bit words M[i], 0 <= i <= 15
-		var M [16]uint32
-		for i := 0; i< len(M) ; i++ {
-			M[i]  = uint32(buf[ch*64+i*4+0]) << 24
-			M[i] |= uint32(buf[ch*64+i*4+1]) << 16
-			M[i] |= uint32(buf[ch*64+i*4+2]) << 8
-			M[i] |= uint32(buf[ch*64+i*4+3]) << 0
+		// break chunk into sixteen 32-bit words x[i], 0 <= i <= 15
+		var x [16]uint32
+		for i := 0; i< len(x) ; i++ {
+			x[i]  = uint32(buf[ch*64+i*4+0]) << 0
+			x[i] |= uint32(buf[ch*64+i*4+1]) << 8
+			x[i] |= uint32(buf[ch*64+i*4+2]) << 16
+			x[i] |= uint32(buf[ch*64+i*4+3]) << 24
 		}
-		// TODO: buggy section begins here
-		// Initialize hash value for this chunk:
-		A := a.a0
-		B := a.b0
-		C := a.c0
-		D := a.d0
-		// Main loop:
-		for i := uint32(0) ; i < uint32(64) ; i++ {
-			var F, g uint32
-			if i >= uint32(0) && i < uint32(16) {
-				F = (B & C) | ((^B) & D)
-				g = i
-			}
-			if i >= uint32(16) && i < uint32(32) {
-				F = (D & B) | ((^D) & C)
-				g = (uint32(5)*i + uint32(1)) % uint32(16)
-			}
-			if i >= uint32(32) && i < uint32(48) {
-				F = B ^ C ^ D
-				g = (uint32(3)*i + uint32(5)) % uint32(16)
-			}
-			if i >= uint32(48) && i < uint32(64) {
-				F = C ^ (B ^ (^ D))
-				g = (uint32(7)*i) % uint32(16)
-			}
-			// Be wary of the below definitions of a,b,c,d
-			F = F + A + K[i] + M[g]  // M[g] must be a 32-bits block
-			A = D
-			D = C
-			C = B
-			B = B + leftrotate(F, s[i])
-		}
+		a := ac.a0
+		b := ac.b0
+		c := ac.c0
+		d := ac.d0
+		
+		/* Round 1 */
+		a = FF (a, b, c, d, x[ 0],  7, 0xd76aa478); /* 1 */
+		d = FF (d, a, b, c, x[ 1], 12, 0xe8c7b756); /* 2 */
+		c = FF (c, d, a, b, x[ 2], 17, 0x242070db); /* 3 */
+		b = FF (b, c, d, a, x[ 3], 22, 0xc1bdceee); /* 4 */
+		a = FF (a, b, c, d, x[ 4],  7, 0xf57c0faf); /* 5 */
+		d = FF (d, a, b, c, x[ 5], 12, 0x4787c62a); /* 6 */
+		c = FF (c, d, a, b, x[ 6], 17, 0xa8304613); /* 7 */
+		b = FF (b, c, d, a, x[ 7], 22, 0xfd469501); /* 8 */
+		a = FF (a, b, c, d, x[ 8],  7, 0x698098d8); /* 9 */
+		d = FF (d, a, b, c, x[ 9], 12, 0x8b44f7af); /* 10 */
+		c = FF (c, d, a, b, x[10], 17, 0xffff5bb1); /* 11 */
+		b = FF (b, c, d, a, x[11], 22, 0x895cd7be); /* 12 */
+		a = FF (a, b, c, d, x[12],  7, 0x6b901122); /* 13 */
+		d = FF (d, a, b, c, x[13], 12, 0xfd987193); /* 14 */
+		c = FF (c, d, a, b, x[14], 17, 0xa679438e); /* 15 */
+		b = FF (b, c, d, a, x[15], 22, 0x49b40821); /* 16 */
+
+		/* Round 2 */
+		a = GG (a, b, c, d, x[ 1],  5, 0xf61e2562); /* 17 */
+		d = GG (d, a, b, c, x[ 6],  9, 0xc040b340); /* 18 */
+		c = GG (c, d, a, b, x[11], 14, 0x265e5a51); /* 19 */
+		b = GG (b, c, d, a, x[ 0], 20, 0xe9b6c7aa); /* 20 */
+		a = GG (a, b, c, d, x[ 5],  5, 0xd62f105d); /* 21 */
+		d = GG (d, a, b, c, x[10],  9,  0x2441453); /* 22 */
+		c = GG (c, d, a, b, x[15], 14, 0xd8a1e681); /* 23 */
+		b = GG (b, c, d, a, x[ 4], 20, 0xe7d3fbc8); /* 24 */
+		a = GG (a, b, c, d, x[ 9],  5, 0x21e1cde6); /* 25 */
+		d = GG (d, a, b, c, x[14],  9, 0xc33707d6); /* 26 */
+		c = GG (c, d, a, b, x[ 3], 14, 0xf4d50d87); /* 27 */
+		b = GG (b, c, d, a, x[ 8], 20, 0x455a14ed); /* 28 */
+		a = GG (a, b, c, d, x[13],  5, 0xa9e3e905); /* 29 */
+		d = GG (d, a, b, c, x[ 2],  9, 0xfcefa3f8); /* 30 */
+		c = GG (c, d, a, b, x[ 7], 14, 0x676f02d9); /* 31 */
+		b = GG (b, c, d, a, x[12], 20, 0x8d2a4c8a); /* 32 */
+
+		/* Round 3 */
+		a = HH (a, b, c, d, x[ 5],  4, 0xfffa3942); /* 33 */
+		d = HH (d, a, b, c, x[ 8], 11, 0x8771f681); /* 34 */
+		c = HH (c, d, a, b, x[11], 16, 0x6d9d6122); /* 35 */
+		b = HH (b, c, d, a, x[14], 23, 0xfde5380c); /* 36 */
+		a = HH (a, b, c, d, x[ 1],  4, 0xa4beea44); /* 37 */
+		d = HH (d, a, b, c, x[ 4], 11, 0x4bdecfa9); /* 38 */
+		c = HH (c, d, a, b, x[ 7], 16, 0xf6bb4b60); /* 39 */
+		b = HH (b, c, d, a, x[10], 23, 0xbebfbc70); /* 40 */
+		a = HH (a, b, c, d, x[13],  4, 0x289b7ec6); /* 41 */
+		d = HH (d, a, b, c, x[ 0], 11, 0xeaa127fa); /* 42 */
+		c = HH (c, d, a, b, x[ 3], 16, 0xd4ef3085); /* 43 */
+		b = HH (b, c, d, a, x[ 6], 23,  0x4881d05); /* 44 */
+		a = HH (a, b, c, d, x[ 9],  4, 0xd9d4d039); /* 45 */
+		d = HH (d, a, b, c, x[12], 11, 0xe6db99e5); /* 46 */
+		c = HH (c, d, a, b, x[15], 16, 0x1fa27cf8); /* 47 */
+		b = HH (b, c, d, a, x[ 2], 23, 0xc4ac5665); /* 48 */
+
+		/* Round 4 */
+		a = II (a, b, c, d, x[ 0],  6, 0xf4292244); /* 49 */
+		d = II (d, a, b, c, x[ 7], 10, 0x432aff97); /* 50 */
+		c = II (c, d, a, b, x[14], 15, 0xab9423a7); /* 51 */
+		b = II (b, c, d, a, x[ 5], 21, 0xfc93a039); /* 52 */
+		a = II (a, b, c, d, x[12],  6, 0x655b59c3); /* 53 */
+		d = II (d, a, b, c, x[ 3], 10, 0x8f0ccc92); /* 54 */
+		c = II (c, d, a, b, x[10], 15, 0xffeff47d); /* 55 */
+		b = II (b, c, d, a, x[ 1], 21, 0x85845dd1); /* 56 */
+		a = II (a, b, c, d, x[ 8],  6, 0x6fa87e4f); /* 57 */
+		d = II (d, a, b, c, x[15], 10, 0xfe2ce6e0); /* 58 */
+		c = II (c, d, a, b, x[ 6], 15, 0xa3014314); /* 59 */
+		b = II (b, c, d, a, x[13], 21, 0x4e0811a1); /* 60 */
+		a = II (a, b, c, d, x[ 4],  6, 0xf7537e82); /* 61 */
+		d = II (d, a, b, c, x[11], 10, 0xbd3af235); /* 62 */
+		c = II (c, d, a, b, x[ 2], 15, 0x2ad7d2bb); /* 63 */
+		b = II (b, c, d, a, x[ 9], 21, 0xeb86d391); /* 64 */
+		
 		// Add this chunk's hash to result so far:
-		a.a0 += A
-		a.b0 += B
-		a.c0 += C
-		a.d0 += D
-		// TODO: buggy section ends here
-		// Test case: echo "a" > bla.txt ; ./recoverytool -md5 bla.txt
-		// should yield 0cc175b9c0f1b6a831c399e269772661
+		ac.a0 += a
+		ac.b0 += b
+		ac.c0 += c
+		ac.d0 += d
 		bytesused += 64
 	}
 	return bytesused
@@ -107,22 +172,22 @@ func (a *md5action) iteratemd5(buf []byte) uint64 {
 
 func (a *md5action) report() {
 	md5 := [16]byte{
-		byte((a.a0 >> 24) & 0xff),
-		byte((a.a0 >> 16) & 0xff),
-		byte((a.a0 >>  8) & 0xff),
 		byte((a.a0 >>  0) & 0xff),
-		byte((a.b0 >> 24) & 0xff),
-		byte((a.b0 >> 16) & 0xff),
-		byte((a.b0 >>  8) & 0xff),
+		byte((a.a0 >>  8) & 0xff),
+		byte((a.a0 >> 16) & 0xff),
+		byte((a.a0 >> 24) & 0xff),
 		byte((a.b0 >>  0) & 0xff),
-		byte((a.c0 >> 24) & 0xff),
-		byte((a.c0 >> 16) & 0xff),
-		byte((a.c0 >>  8) & 0xff),
+		byte((a.b0 >>  8) & 0xff),
+		byte((a.b0 >> 16) & 0xff),
+		byte((a.b0 >> 24) & 0xff),
 		byte((a.c0 >>  0) & 0xff),
-		byte((a.d0 >> 24) & 0xff),
-		byte((a.d0 >> 16) & 0xff),
-		byte((a.d0 >>  8) & 0xff),
+		byte((a.c0 >>  8) & 0xff),
+		byte((a.c0 >> 16) & 0xff),
+		byte((a.c0 >> 24) & 0xff),
 		byte((a.d0 >>  0) & 0xff),
+		byte((a.d0 >>  8) & 0xff),
+		byte((a.d0 >> 16) & 0xff),
+		byte((a.d0 >> 24) & 0xff),
 	}
 	for _ , c := range md5 {
 		fmt.Printf("%02x", c)
@@ -134,7 +199,7 @@ func (a *md5action) Run(buf[] byte, abspos, tcnt, n uint64, lastbit bool) (uint6
 	if len(buf) < 0 {
 		return uint64(0), nil
 	}
-	fmt.Println("buf", buf)
+	//fmt.Println("buf", buf)
 	bytesused := a.iteratemd5(buf)
 	tcnt += bytesused
 	t2 := time.Now()
@@ -156,12 +221,12 @@ func (a *md5action) Run(buf[] byte, abspos, tcnt, n uint64, lastbit bool) (uint6
 			buf2 = append(buf2, 0x00)
 		}
 		bitlen := n*8
-		for i := 7 ; i >= 0 ; i-- {
+		for i := 0 ; i < 8 ; i++ {
 			b := byte((bitlen >> (i*8)) & 0xff)
 			buf2 = append(buf2, b)
 			cnt++
 		}
-		fmt.Println("buf2", buf2)
+		//fmt.Println("buf2", buf2)
 		bytesused = a.iteratemd5(buf2)
 		if bytesused != uint64(len(buf2)) {
 			panic("bytesused != uint64(len(buf2))")

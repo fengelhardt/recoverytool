@@ -24,7 +24,7 @@ func readFileIntoAlternatingBuffers(buf [2][]byte, evt chan<- readevent,
 	var l int
 	for err == nil && totalbytecnt < n && !(*stop) {
 		l, err = g_file.Read(buf[ibuf])
-		if l > int(n-totalbytecnt) {
+		if l >= int(n-totalbytecnt) {
 			l = int(n-totalbytecnt)
 			err = io.EOF
 		}

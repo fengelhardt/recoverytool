@@ -58,7 +58,16 @@ func iterateOverFile(from, n uint64, ac action) error {
 	totalbytecnt := uint64(0)
 	// Handle the bytes in chunks of g_buflen.
 	for e := range evt {
-// 		fmt.Printf("n=%d l=%d offs=%d  \n", n, l, offs)
+		// We have to add leftover bytes from the previos run.
+		// We add some extrabytes to the beginning of the buffer to put these bytes there.
+		// So, the 'runbuf' for the next call to run is assembles like this:
+		//
+		//           <--  extrasize  --> <  -----            bufsize                       --->
+		// buf:     [............-------|--------------------------------......................]
+		//      extraspaceused:  <-   ->
+		//                               <--   l (filled by Read())   -->
+		// runbuf:              [----------------------------|-----------]
+		//                       <--      bytesused       --> <- carry ->
 		ibuf, l, err := e.ibuf, e.l, e.err
 		if err != nil && err != io.EOF {
 			stop = true
@@ -69,13 +78,13 @@ func iterateOverFile(from, n uint64, ac action) error {
 		var bytesused uint64
 		runbuf := buf[ibuf][extrasize-extraspaceused:extrasize+l]
 		bytesused, err = ac.Run(runbuf, from+totalbytecnt, totalbytecnt, n, lastbit)
-		if bytesused > uint64(l) {
-			panic(fmt.Errorf("bytesused > l"))
+		if bytesused > uint64(len(runbuf)) {
+			panic(fmt.Errorf("bytesused > len(runbuf)"))
 		}
 		totalbytecnt += bytesused
 		// Run() might not have used all bytes.
 		// Copy the left over bytes to the extra space at the begining of the other buffer
-		carry := buf[ibuf][extrasize+int(bytesused):extrasize+l]
+		carry := runbuf[int(bytesused):]
 		extraspaceused = len(carry)
 		if extraspaceused > extrasize {
 			stop = true

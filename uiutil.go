@@ -35,27 +35,27 @@ func siValue(v float64, unit string) string {
 
 func printHex(b byte) {
 	if b >= ' ' && b <='~' {
-		fmt.Printf("%c", b)
+		uiPrintf1(0, "%c", b)
 	} else if b == '\t' || b == '\r' || b == '\n' || b == '\f' {
-		fmt.Print(" ")
+		uiPrintf1(0, " ")
 	} else {
-		fmt.Print(".")
+		uiPrintf1(0, ".")
 	}
 }
 
 func printHexLine(offs uint64, buf []byte) {
 	// same as hexdump -e '1/128  "%_ax "' -e '128/ "%_p"' -e '1 "\n"' <file>
-	fmt.Printf("%x ", offs)
+	uiPrintf1(0, "%x ", offs)
 	for _, b := range buf {
 		printHex(b)
 	}
-	fmt.Println()
+	uiPrintf1(0, "\n")
 }
 
 func printHexLines(offs, nlines uint64) {
 	file, err := os.OpenFile(g_filename, os.O_RDONLY, 0755)
 	if err != nil {
-		fmt.Println(err)
+		uiPrintf1(0, "%s\n", err)
 		return
 	}
 	defer file.Close()
@@ -67,7 +67,7 @@ func printHexLines(offs, nlines uint64) {
 	var l int
 	l, err = file.Read(buf)
 	if err != nil && err != io.EOF {
-		fmt.Println(err)
+		uiPrintf2(0, "%s\n", err)
 		return
 	}
 	lineoffs1 := 0
@@ -86,4 +86,20 @@ func printHexLines(offs, nlines uint64) {
 
 func calcETA(amount, throughput float64) string {
 	return time.Duration(amount/throughput*1000000000.0).String()
+}
+
+func uiPrintf1(level int, format string, a ...interface{}) (n int, err error) {
+	if g_verbosity >= level {
+		return fmt.Printf(format, a...)
+	} else {
+		return 0, nil
+	}
+}
+
+func uiPrintf2(level int, format string, a ...interface{}) (n int, err error) {
+	if g_verbosity >= level {
+		return fmt.Fprintf(os.Stderr, format, a...)
+	} else {
+		return 0, nil
+	}
 }

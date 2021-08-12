@@ -1,7 +1,6 @@
 package main
 
 import (
-// 	"fmt"
 )
 
 type hexdumpaction struct {
@@ -9,7 +8,7 @@ type hexdumpaction struct {
 }
 
 func (a *hexdumpaction) Run(buf[] byte, abspos, tcnt, n uint64, lastbit bool) (uint64, error) {
-// 	fmt.Printf("n=%d, tcnt=%d, buflen=%d, linelen=%d\n", n, tcnt, len(buf), g_linelen)
+	uiPrintf2(3, "n=%d, tcnt=%d, buflen=%d, linelen=%d\n", n, tcnt, len(buf), g_linelen)
 	lines := uint64(len(buf)) / g_linelen
 	bufbytecnt := uint64(0)
 	if lines > 0 {

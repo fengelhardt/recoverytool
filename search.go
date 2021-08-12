@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"time"
-	"os"
 	"bytes"
 )
 
@@ -22,14 +20,14 @@ func (a *searchaction) Init(needles [][]byte) {
 	for _ , n := range needles {
 		if len(n) > a.maxlen {a.maxlen = len(n)}
 	}
+	uiPrintf1(2, "Searching for the following patterns: %s\n", a.needles)
 	return
 }
 
 func (a *searchaction) report(needle []byte, addr uint64) {
-	fmt.Printf("Match for %s at adress %x\n", needle, addr)
+	uiPrintf1(0, "Match for %s at adress %x\n", needle, addr)
 	rstartaddr := addr - addr%g_linelen
 	rstartline := rstartaddr / g_linelen
-// 	fmt.Println(rstartaddr, g_linelen, rstartline)
 	rnlines := g_linesbefore + g_linesafter + 1
 	if rstartaddr > g_linesbefore*g_linelen {
 		rstartaddr -= g_linesbefore*g_linelen
@@ -61,9 +59,9 @@ func (a *searchaction) Run(buf[] byte, abspos, tcnt, n uint64, lastbit bool) (ui
 	eta := calcETA(float64(n-tcnt), a.tp)
 	a.t1 = t2
 	percentcomplete := float64(tcnt)/float64(n)*100.0
-	fmt.Fprintf(os.Stderr, "%5.1f%%, %s ETA %s          \r", percentcomplete, siValue(a.tp, "B/s"), eta)
+	uiPrintf1(1, "%5.1f%%, %s ETA %s          \r", percentcomplete, siValue(a.tp, "B/s"), eta)
 	if lastbit {
-		fmt.Fprintf(os.Stderr, "\n")
+		uiPrintf2(1, "\n")
 		return uint64(len(buf)), nil
 	}
 	return uint64(len(buf)-a.maxlen), nil

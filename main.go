@@ -19,7 +19,11 @@ var g_doprint bool
 var g_linesbefore uint64
 var g_linesafter uint64
 var g_domd5 bool
+var g_verbose bool
+var g_quiet bool
+var g_debug bool
 
+var g_verbosity int
 var g_file *os.File
 
 type strlist []string
@@ -44,6 +48,9 @@ func specifyFlags() {
 	flag.BoolVar(&g_doprint, "p", false, "print out data")
 	flag.BoolVar(&g_domd5, "md5", false, "calculate the md5 checksum")
 	flag.Var(&g_patterns, "m", "search for a pattern")
+	flag.BoolVar(&g_verbose, "v", false, "be more verbose")
+	flag.BoolVar(&g_quiet, "q", false, "do not print status updates")
+	flag.BoolVar(&g_debug, "d", false, "print debug output")
 }
 
 func checkFlags() error {
@@ -79,6 +86,10 @@ func checkFlags() error {
 	if actions >= 2 {
 		return errors.New("Can only have one flag out of -p -m -md5")
 	}
+	g_verbosity = 0
+	if !g_quiet { g_verbosity = 1 }
+	if g_verbose { g_verbosity = 2 }
+	if g_debug { g_verbosity = 3 }
 	return nil
 }
 
@@ -101,7 +112,7 @@ func main() {
 	specifyFlags()
 	flag.Parse()
 	if len(flag.Args()) == 0 {
-		fmt.Println("Missing file name")
+		uiPrintf2(0, "Missing file name")
 		return
 	}
 	g_filename = flag.Args()[0]
@@ -111,59 +122,54 @@ func main() {
 		fmt.Println(err)
 		return
 	}
+	defer g_file.Close()
 	err = checkFlags()
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 	
+	n := uint64(g_enduntil - g_startfrom)
+	if g_numlines != 0 {
+		n = min(g_linelen*g_numlines, n)
+	}
+	
 	if g_doprint {
-		n := uint64(g_enduntil - g_startfrom)
-		if g_numlines != 0 {
-			n = min(g_linelen*g_numlines, n)
-		}
-		fmt.Printf("Printing from %x to %x: %s\n", g_startfrom, uint64(g_startfrom)+n, siValue(float64(n), "B"))
+		uiPrintf1(1, "Dumping %s from %x to %x: %d Bytes (%s)\n", 
+			g_filename, g_startfrom, uint64(g_startfrom)+n, 
+			n, siValue(float64(n), "B"))
 		ac := hexdumpaction{}
 		iterateOverFile(uint64(g_startfrom), n, &ac)
 		if err != nil {
-			fmt.Println(err)
+			uiPrintf2(0, "%s\n", err)
 			return
 		}
 	}
 	
 	if g_domd5 {
-		n := uint64(g_enduntil - g_startfrom)
-		if g_numlines != 0 {
-			n = min(g_linelen*g_numlines, n)
-		}
-		fmt.Printf("Calculating checksum from %x to %x: %s\n", g_startfrom, uint64(g_startfrom)+n, siValue(float64(n), "B"))
+		uiPrintf1(1, "Calculating checksum of %s from %x to %x: %d Bytes (%s)\n", 
+			g_filename, g_startfrom, uint64(g_startfrom)+n,
+			n, siValue(float64(n), "B"))
 		ac := md5action{}
 		ac.Init()
 		iterateOverFile(uint64(g_startfrom), n, &ac)
 		if err != nil {
-			fmt.Println(err)
+			uiPrintf2(0, "%s\n", err)
 			return
 		}
 	}
 	
 	if len(g_patterns) != 0 {
-		n := uint64(g_enduntil - g_startfrom)
-		if g_numlines != 0 {
-			n = min(g_linelen*g_numlines, n)
-		}
-		fmt.Printf("Searching from %x to %x: %s\n", g_startfrom, uint64(g_startfrom)+n, siValue(float64(n), "B"))
+		uiPrintf1(1, "Searching %s from %x to %x: %d Bytes (%s)\n",
+			g_filename, g_startfrom, uint64(g_startfrom)+n,
+			n, siValue(float64(n), "B"))
 		ac := searchaction{}
 		ac.Init(toBytesSlice(g_patterns))
 		iterateOverFile(uint64(g_startfrom), n, &ac)
 		if err != nil {
-			fmt.Println(err)
+			uiPrintf2(0, "%s\n", err)
 			return
 		}
 		
-	}
-	
-	if err := g_file.Close(); err != nil {
-		fmt.Println(err)
-		return
 	}
 }

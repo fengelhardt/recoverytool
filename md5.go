@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"time"
-	"os"
 )
 
 type md5action struct {
@@ -183,9 +181,9 @@ func (a *md5action) report() {
 		byte((a.d0 >> 24) & 0xff),
 	}
 	for _ , c := range md5 {
-		fmt.Printf("%02x", c)
+		uiPrintf1(0, "%02x", c)
 	}
-	fmt.Println()
+	uiPrintf1(0, "\n")
 }
 
 func (a *md5action) Run(buf[] byte, abspos, tcnt, n uint64, lastbit bool) (uint64, error) {
@@ -201,7 +199,7 @@ func (a *md5action) Run(buf[] byte, abspos, tcnt, n uint64, lastbit bool) (uint6
 	eta := calcETA(float64(n-tcnt), a.tp)
 	a.t1 = t2
 	percentcomplete := float64(tcnt)/float64(n)*100.0
-	fmt.Fprintf(os.Stderr, "%5.1f%%, %s ETA %s          \r", percentcomplete, siValue(a.tp, "B/s"), eta)
+	uiPrintf2(1, "%5.1f%%, %s ETA %s          \r", percentcomplete, siValue(a.tp, "B/s"), eta)
 	if lastbit {
 		// do the final md5 stuff
 		bytesleft := uint64(len(buf))-bytesused
@@ -228,7 +226,7 @@ func (a *md5action) Run(buf[] byte, abspos, tcnt, n uint64, lastbit bool) (uint6
 		if tcnt != n {
 			panic("tcnt != n")
 		}
-		fmt.Fprintf(os.Stderr, "                                                           \r")
+		uiPrintf2(1, "                                                           \r")
 		a.report()
 		return uint64(len(buf)), nil
 	}

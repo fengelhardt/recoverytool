@@ -7,6 +7,15 @@ It is useful for data recovery on defect disk images, recovery of accidentally d
 This tool can search for some known text passages (or byte arrays) on a whole disk image,
 so it might be possible to recover some lost data, e.g. ASCII text files.
 
+## Installation
+
+Simply clone and build.
+No external libraries are needed.
+
+	git clone git@github.com:fengelhardt/recoverytool.git
+	cd recoverytool
+	go build .
+
 ## Example uses
 
 Create a disk image (same as `dd if=/dev/sda1 of=disk.img -oflag=sync -bs=100M`).

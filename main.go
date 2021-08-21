@@ -22,6 +22,7 @@ var g_domd5 bool
 var g_verbose bool
 var g_quiet bool
 var g_debug bool
+var g_copyfilename string
 
 var g_verbosity int
 var g_file *os.File
@@ -51,6 +52,7 @@ func specifyFlags() {
 	flag.BoolVar(&g_verbose, "v", false, "be more verbose")
 	flag.BoolVar(&g_quiet, "q", false, "do not print status updates")
 	flag.BoolVar(&g_debug, "d", false, "print debug output")
+	flag.StringVar(&g_copyfilename, "cp", "", "similar to dd, copy file contents to another file")
 }
 
 func checkFlags() error {
@@ -80,11 +82,12 @@ func checkFlags() error {
 	if g_doprint { actions++ }
 	if g_domd5 { actions++ }
 	if len(g_patterns) != 0 { actions++ }
+	if len(g_copyfilename) != 0 { actions++ }
 	if actions == 0 {
 		return errors.New("No action specified. Must specify one of -p -m -md5")
 	}
 	if actions >= 2 {
-		return errors.New("Can only have one flag out of -p -m -md5")
+		return errors.New("Can only have one flag out of -p -m -md5 -cp")
 	}
 	g_verbosity = 0
 	if !g_quiet { g_verbosity = 1 }
@@ -170,6 +173,19 @@ func main() {
 			uiPrintf2(0, "%s\n", err)
 			return
 		}
-		
+	}
+	
+	if len(g_copyfilename) != 0 {
+		uiPrintf1(1, "Copying %s to %s, from %x to %x: %d Bytes (%s)\n",
+			g_filename, g_copyfilename, 
+			g_startfrom, uint64(g_startfrom)+n,
+			n, siValue(float64(n), "B"))
+		ac := copyaction{}
+		ac.Init()
+		iterateOverFile(uint64(g_startfrom), n, &ac)
+		if err != nil {
+			uiPrintf2(0, "%s\n", err)
+			return
+		}
 	}
 }
